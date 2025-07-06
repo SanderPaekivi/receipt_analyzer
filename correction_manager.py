@@ -1,5 +1,3 @@
-# correction_manager.py
-
 import json
 import os
 from fuzzywuzzy import process

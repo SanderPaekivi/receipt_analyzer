@@ -1,5 +1,3 @@
-# cli_handler.py
-
 from data_manager import finalize_item_data
 from correction_manager import learn_correction, learn_dismissal
 import math

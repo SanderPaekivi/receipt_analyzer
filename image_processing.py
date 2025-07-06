@@ -1,5 +1,3 @@
-# image_processing.py
-
 import cv2
 import numpy as np
 import os
@@ -15,7 +13,6 @@ def preprocess_image(image_path: str):
         "threshold": False,
     }
 
-    # --- Load Image ---
     img = cv2.imread(image_path)
     if img is None:
         print(f"[ERROR] Could not load image at path: {image_path}")
@@ -24,18 +21,16 @@ def preprocess_image(image_path: str):
     if not os.path.exists('logs'):
         os.makedirs('logs')
 
-    # This will be the image we work on throughout the pipeline.
-    # It starts as the original image.
     processed_image = img.copy()
 
-    # --- 1. Auto-Crop and Perspective Transform (Runs First) ---
+    # Auto-crop and perspective transform
     if settings["auto_crop"]:
         print("Step 1: Attempting to auto-crop receipt...")
         
-        # We perform edge detection on a grayscaled version, but warp the original color image.
+        # Edge detection on grayscaled version; warp on the original color image
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        edged = cv2.Canny(blurred, 50, 200) # Adjusted Canny thresholds for better edge detection
+        edged = cv2.Canny(blurred, 50, 200) # Adjusted Canny thresholds for better edge detection https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html
         cv2.imwrite('logs/debug_0_edges.png', edged)
 
         contours, _ = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -54,7 +49,7 @@ def preprocess_image(image_path: str):
             cv2.drawContours(img, [screenCnt], -1, (0, 255, 0), 3)
             cv2.imwrite('logs/debug_0_contour.png', img)
 
-            # Manually perform the four-point transform
+            # Manually perform four-point transform
             pts = screenCnt.reshape(4, 2)
             rect = np.zeros((4, 2), dtype="float32")
             s = pts.sum(axis=1)
@@ -75,18 +70,17 @@ def preprocess_image(image_path: str):
             dst = np.array([[0, 0], [maxWidth - 1, 0], [maxWidth - 1, maxHeight - 1], [0, maxHeight - 1]], dtype="float32")
             M = cv2.getPerspectiveTransform(rect, dst)
             
-            # The result of the warp is our new image to process for the rest of the pipeline
+            # Result of warp is the new image to process in rest of the pipeline
             processed_image = cv2.warpPerspective(img, M, (maxWidth, maxHeight))
         else:
             print("[WARNING] Could not find a 4-point contour. Using full image.")
     
-    # --- 2. Grayscale ---
-    # This is now the first mandatory processing step, running on either the cropped or full image.
+    # Grayscale conversion, followed by denoising, sharpening, and thresholding
     processed_image = cv2.cvtColor(processed_image, cv2.COLOR_BGR2GRAY)
     print("Step 2: Grayscale conversion complete.")
     cv2.imwrite('logs/debug_1_grayscale.png', processed_image)
 
-    # --- The rest of the pipeline runs on the grayscaled image ---
+
     if settings["denoise"]:
         print("Step 3: Applying median blur for denoising...")
         processed_image = cv2.medianBlur(processed_image, 3)
@@ -98,6 +92,7 @@ def preprocess_image(image_path: str):
         processed_image = cv2.filter2D(processed_image, -1, sharpen_kernel)
         cv2.imwrite('logs/debug_3_sharpened.png', processed_image)
 
+    # NOTE: Thresholding seems to suck... dont know how to use it properly perhaps
     if settings["threshold"]:
         print("Step 5: Applying adaptive threshold...")
         processed_image = cv2.adaptiveThreshold(
