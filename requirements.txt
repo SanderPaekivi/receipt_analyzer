@@ -1,0 +1,7 @@
+# sudo apt install tesseract-ocr tesseract-ocr-est
+
+pytesseract 
+pandas 
+fuzzywuzzy 
+python-levenshtein
+opencv-python
